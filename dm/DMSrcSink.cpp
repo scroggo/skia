@@ -1,6 +1,7 @@
 #include "DMSrcSink.h"
 #include "SamplePipeControllers.h"
 #include "SkCommonFlags.h"
+#include "SkCodec.h"
 #include "SkDocument.h"
 #include "SkMultiPictureDraw.h"
 #include "SkNullCanvas.h"
@@ -44,10 +45,18 @@ Error ImageSrc::draw(SkCanvas* canvas) const {
     const SkColorType dstColorType = canvas->imageInfo().colorType();
     if (fDivisor == 0) {
         // Decode the full image.
-        SkBitmap bitmap;
-        if (!SkImageDecoder::DecodeMemory(encoded->data(), encoded->size(), &bitmap,
-                                          dstColorType, SkImageDecoder::kDecodePixels_Mode)) {
+        SkAutoTDelete<SkCodec> codec(SkCodec::NewFromData(encoded));
+        if (!codec) {
             return SkStringPrintf("Couldn't decode %s.", fPath.c_str());
+        }
+        SkImageInfo info;
+        if (!codec->getInfo(&info)) {
+            return SkStringPrintf("Couldn't getInfo %s.", fPath.c_str());
+        }
+        SkBitmap bitmap;
+        bitmap.allocPixels(info);
+        if (!codec->getPixels(info, bitmap.getPixels(), bitmap.rowBytes(), NULL, NULL)) {
+            return SkStringPrintf("Couldn't getPixels %s.", fPath.c_str());
         }
         encoded.reset((SkData*)NULL);  // Might as well drop this when we're done with it.
         canvas->drawBitmap(bitmap, 0,0);
