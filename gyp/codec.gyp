@@ -24,6 +24,14 @@
         '../src/codec/SkSwizzler.cpp',
       ],
       'conditions': [
+        [ 'skia_os == "mac"', {
+          'export_dependent_settings': [
+            'libpng.gyp:libpng',
+          ],
+          'dependencies': [
+            'libpng.gyp:libpng',
+          ],
+        }],
         [ 'skia_os in ["linux", "freebsd", "openbsd", "solaris"]', {
           'export_dependent_settings': [
             'libpng.gyp:libpng',
