@@ -81,7 +81,7 @@ public:
     }
 
     void detach() {
-        fPng_ptr = png_infopp_NULL;
+        fPng_ptr = NULL;
         fInfo_ptr = png_infopp_NULL;
     }
 

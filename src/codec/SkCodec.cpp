@@ -31,3 +31,8 @@ SkCodec* SkCodec::NewFromData(SkData* data) {
     }
     return NewFromStream(SkNEW_ARGS(SkMemoryStream, (data)));
 }
+
+SkCodec::SkCodec(const SkImageInfo& info, SkStream* stream)
+    : fInfo(info)
+    , fStream(stream)
+{}
