@@ -154,6 +154,7 @@ SkSwizzler* SkSwizzler::CreateSwizzler(SkSwizzler::SrcConfig sc, const SkPMColor
                 default:
                     break;
             }
+            break;
         case kRGBX:
             // TODO: Support other swizzles.
             switch (info.colorType()) {
@@ -184,6 +185,9 @@ SkSwizzler* SkSwizzler::CreateSwizzler(SkSwizzler::SrcConfig sc, const SkPMColor
                 default:
                     break;
             }
+            break;
+        default:
+            break;
     }
     if (NULL == proc) {
         return NULL;

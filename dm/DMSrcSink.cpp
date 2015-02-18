@@ -53,9 +53,13 @@ Error ImageSrc::draw(SkCanvas* canvas) const {
         if (!codec->getInfo(&info)) {
             return SkStringPrintf("Couldn't getInfo %s.", fPath.c_str());
         }
+        if (info.alphaType() == kUnpremul_SkAlphaType) {
+            // FIXME: Currently we cannot draw unpremultiplied sources.
+            info = info.makeAlphaType(kPremul_SkAlphaType);
+        }
         SkBitmap bitmap;
         bitmap.allocPixels(info);
-        if (!codec->getPixels(info, bitmap.getPixels(), bitmap.rowBytes(), NULL, NULL)) {
+        if (codec->getPixels(info, bitmap.getPixels(), bitmap.rowBytes()) != SkImageGenerator::kSuccess) {
             return SkStringPrintf("Couldn't getPixels %s.", fPath.c_str());
         }
         encoded.reset((SkData*)NULL);  // Might as well drop this when we're done with it.

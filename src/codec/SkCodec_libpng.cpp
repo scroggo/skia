@@ -321,13 +321,32 @@ SkPngCodec::~SkPngCodec() {
 // Getting the pixels
 ///////////////////////////////////////////////////////////////////////////////
 
+static bool premul_and_unpremul(SkAlphaType A, SkAlphaType B) {
+    return kPremul_SkAlphaType == A && kUnpremul_SkAlphaType == B;
+}
+
+static bool conversion_possible(const SkImageInfo& A, const SkImageInfo& B) {
+    // TODO: Support other conversions
+    if (A.colorType() != B.colorType()) {
+        return false;
+    }
+    if (A.profileType() != B.profileType()) {
+        return false;
+    }
+    if (A.alphaType() == B.alphaType()) {
+        return true;
+    }
+    return premul_and_unpremul(A.alphaType(), B.alphaType())
+            || premul_and_unpremul(B.alphaType(), A.alphaType());
+}
+
 SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* dst,
                                         size_t rowBytes, SkPMColor ctable[],
                                         int* ctableCount) {
     if (requestedInfo.dimensions() != this->getOriginalInfo().dimensions()) {
         return kInvalidScale;
     }
-    if (requestedInfo != this->getOriginalInfo()) {
+    if (!conversion_possible(requestedInfo, this->getOriginalInfo())) {
         return kInvalidConversion;
     }
 
@@ -336,6 +355,13 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
     if (!decodedBitmap.installPixels(requestedInfo, dst, rowBytes)) {
         // FIXME: This should have failed before now.
         return kInvalidConversion;
+    }
+
+    // FIXME: Could we use the return value of setjmp to specify the type of
+    // error?
+    if (setjmp(png_jmpbuf(fPng_ptr))) {
+        SkDebugf("setjmp long jump!\n");
+        return kInvalidInput;
     }
 
     // FIXME: Here is where we should likely insert some of the modifications
@@ -416,4 +442,5 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
         // FIXME: We want to alert the caller. Is this the right way?
         *const_cast<SkImageInfo*>(&requestedInfo) = requestedInfo.makeAlphaType(kOpaque_SkAlphaType);
     }
+    return kSuccess;
 }

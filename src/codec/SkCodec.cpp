@@ -15,11 +15,13 @@ SkCodec* SkCodec::NewFromStream(SkStream* stream) {
         return NULL;
     }
     SkAutoTDelete<SkStream> streamDeleter(stream);
-    if (SkPngCodec::IsPng(stream)) {
-        return SkPngCodec::NewFromStream(stream);
-    }
+    const bool isPng = SkPngCodec::IsPng(stream);
     if (!stream->rewind()) {
         return NULL;
+    }
+    if (isPng) {
+        streamDeleter.detach();
+        return SkPngCodec::NewFromStream(stream);
     }
     // TODO: Check other image types.
     return NULL;
