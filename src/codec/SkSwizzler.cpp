@@ -211,3 +211,4 @@ bool SkSwizzler::next(const uint8_t* SK_RESTRICT src) {
     fDstRow = SkTAddOffset<void>(fDstRow, fDstRowBytes);
     return hadAlpha;
 }
+
