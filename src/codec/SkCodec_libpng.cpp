@@ -420,23 +420,40 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
     }
 
     if (numberPasses > 1) {
-        // TODO:
-        SkDebugf("This PNG is INTERLACED! Failing\n");
-        return kUnimplemented;
-    }
+        const int width = requestedInfo.width();
+        const int height = requestedInfo.height();
+        const int bpp = SkSwizzler::BytesPerPixel(sc);
+        const size_t rowBytes = width * bpp;
 
+        SkAutoMalloc storage(width * height * bpp);
+        uint8_t* const base = static_cast<uint8_t*>(storage.get());
 
-    {
+        for (int i = 0; i < numberPasses; i++) {
+            uint8_t* row = base;
+            for (png_uint_32 y = 0; y < height; y++) {
+                uint8_t* bmRow = row;
+                png_read_rows(fPng_ptr, &bmRow, png_bytepp_NULL, 1);
+                row += rowBytes;
+            }
+        }
+
+        // Now swizzle it.
+        uint8_t* row = base;
+        for (int y = 0; y < numberPasses; y++) {
+            reallyHasAlpha |= swizzler->next(row);
+            row += rowBytes;
+        }
+    } else {
         SkAutoMalloc storage(requestedInfo.width() * SkSwizzler::BytesPerPixel(sc));
         uint8_t* srcRow = static_cast<uint8_t*>(storage.get());
         for (int y = 0; y < requestedInfo.height(); y++) {
             png_read_rows(fPng_ptr, &srcRow, png_bytepp_NULL, 1);
             reallyHasAlpha |= swizzler->next(srcRow);
         }
-        /* read rest of file, and get additional chunks in info_ptr - REQUIRED */
-        png_read_end(fPng_ptr, fInfo_ptr);
-
     }
+
+    /* read rest of file, and get additional chunks in info_ptr - REQUIRED */
+    png_read_end(fPng_ptr, fInfo_ptr);
 
     // FIXME: do we need substituteTranspColor?
 
