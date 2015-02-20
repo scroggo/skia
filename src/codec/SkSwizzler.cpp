@@ -106,6 +106,12 @@ static bool swizzle_rgba_to_n32_premul_skipZ(void* SK_RESTRICT dstRow,
     return alphaMask != 0xFF;
 }
 
+/**
+    FIXME: This was my idea to cheat in order to continue taking advantage of skipping zeroes.
+    This would be fine for drawing normally, but not for drawing with transfer modes. Being
+    honest means we can draw correctly with transfer modes, with the cost of not being able
+    to take advantage of Android's free unwritten pages. Something to keep in mind when we
+    decide whether to switch to unpremul default.
 static bool swizzle_rgba_to_n32_unpremul_skipZ(void* SK_RESTRICT dstRow,
                                                const uint8_t* SK_RESTRICT src,
                                                int width, int deltaSrc, int,
@@ -125,6 +131,7 @@ static bool swizzle_rgba_to_n32_unpremul_skipZ(void* SK_RESTRICT dstRow,
     }
     return alphaMask != 0xFF;
 }
+*/
 
 SkSwizzler* SkSwizzler::CreateSwizzler(SkSwizzler::SrcConfig sc, const SkPMColor* ctable,
                                        const SkImageInfo& info, void* dst,
@@ -169,11 +176,8 @@ SkSwizzler* SkSwizzler::CreateSwizzler(SkSwizzler::SrcConfig sc, const SkPMColor
             switch (info.colorType()) {
                 case kN32_SkColorType:
                     if (info.alphaType() == kUnpremul_SkAlphaType) {
-                        if (skipZeroes) {
-                            proc = &swizzle_rgba_to_n32_unpremul_skipZ;
-                        } else {
-                            proc = &swizzle_rgba_to_n32_unpremul;
-                        }
+                        // Respect skipZeroes?
+                        proc = &swizzle_rgba_to_n32_unpremul;
                     } else {
                         if (skipZeroes) {
                             proc = &swizzle_rgba_to_n32_premul_skipZ;
