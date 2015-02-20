@@ -12,6 +12,8 @@
 #include "SkStream.h"
 #include "SkXMLWriter.h"
 
+DEFINE_bool(codec, false, "Use SkCodec instead of SkImageDecoder");
+
 namespace DM {
 
 GMSrc::GMSrc(skiagm::GMRegistry::Factory factory) : fFactory(factory) {}
@@ -44,25 +46,33 @@ Error ImageSrc::draw(SkCanvas* canvas) const {
     }
     const SkColorType dstColorType = canvas->imageInfo().colorType();
     if (fDivisor == 0) {
+        // Just for debugging.
         SkString name = SkOSPath::Basename(fPath.c_str());
         SkDebugf("Attempting to decode %s\n", name.c_str());
         // Decode the full image.
-        SkAutoTDelete<SkCodec> codec(SkCodec::NewFromData(encoded));
-        if (!codec) {
-            return SkStringPrintf("Couldn't decode %s.", fPath.c_str());
-        }
-        SkImageInfo info;
-        if (!codec->getInfo(&info)) {
-            return SkStringPrintf("Couldn't getInfo %s.", fPath.c_str());
-        }
-        if (info.alphaType() == kUnpremul_SkAlphaType) {
-            // FIXME: Currently we cannot draw unpremultiplied sources.
-            info = info.makeAlphaType(kPremul_SkAlphaType);
-        }
         SkBitmap bitmap;
-        bitmap.allocPixels(info);
-        if (codec->getPixels(info, bitmap.getPixels(), bitmap.rowBytes()) != SkImageGenerator::kSuccess) {
-            return SkStringPrintf("Couldn't getPixels %s.", fPath.c_str());
+        if (FLAGS_codec) {
+            SkAutoTDelete<SkCodec> codec(SkCodec::NewFromData(encoded));
+            if (!codec) {
+                return SkStringPrintf("Couldn't decode %s.", fPath.c_str());
+            }
+            SkImageInfo info;
+            if (!codec->getInfo(&info)) {
+                return SkStringPrintf("Couldn't getInfo %s.", fPath.c_str());
+            }
+            if (info.alphaType() == kUnpremul_SkAlphaType) {
+                // FIXME: Currently we cannot draw unpremultiplied sources.
+                info = info.makeAlphaType(kPremul_SkAlphaType);
+            }
+            bitmap.allocPixels(info);
+            if (codec->getPixels(info, bitmap.getPixels(), bitmap.rowBytes()) != SkImageGenerator::kSuccess) {
+                return SkStringPrintf("Couldn't getPixels %s.", fPath.c_str());
+            }
+        } else {
+            if (!SkImageDecoder::DecodeMemory(encoded->data(), encoded->size(), &bitmap,
+                                              dstColorType, SkImageDecoder::kDecodePixels_Mode)) {
+                return SkStringPrintf("Couldn't decode %s.", fPath.c_str());
+            }
         }
         encoded.reset((SkData*)NULL);  // Might as well drop this when we're done with it.
         canvas->drawBitmap(bitmap, 0,0);
