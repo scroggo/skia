@@ -67,12 +67,14 @@ static void sk_read_fn(png_structp png_ptr, png_bytep data,
 class AutoCleanPng : public SkNoncopyable {
 public:
     AutoCleanPng(png_structp png_ptr)
-        : fPng_ptr(&png_ptr)
+        : fPng_ptr(png_ptr)
         , fInfo_ptr(png_infopp_NULL) {}
 
     ~AutoCleanPng() {
-        // FIXME: Make sure it's okay for fInfo_ptr to be NULL
-        png_destroy_read_struct(fPng_ptr, fInfo_ptr, png_infopp_NULL);
+        if (fPng_ptr) {
+            // FIXME: Make sure it's okay for fInfo_ptr to be NULL
+            png_destroy_read_struct(&fPng_ptr, fInfo_ptr, png_infopp_NULL);
+        }
     }
 
     void setInfoPtr(png_infop info_ptr) {
@@ -86,7 +88,7 @@ public:
     }
 
 private:
-    png_structpp    fPng_ptr;
+    png_structp     fPng_ptr;
     png_infopp      fInfo_ptr;
 };
 #define AutoCleanPng(...) SK_REQUIRE_LOCAL_VAR(AutoCleanPng)
