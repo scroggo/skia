@@ -16,14 +16,6 @@ extern "C" {
 
 class SkStream;
 
-// FIXME: This allows me to use the eventual name instead of the transitional
-// name.
-#define SK_SUPPORT_LEGACY_IMAGE_GENERATOR_RETURN
-
-#ifdef SK_SUPPORT_LEGACY_IMAGE_GENERATOR_RETURN
-    #define onGetPixels onGetPixelsEnum
-#endif
-
 class SkPngCodec : public SkCodec {
 public:
     // Assumes IsPng was called and returned true.
