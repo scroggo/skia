@@ -44,6 +44,8 @@ Error ImageSrc::draw(SkCanvas* canvas) const {
     }
     const SkColorType dstColorType = canvas->imageInfo().colorType();
     if (fDivisor == 0) {
+        SkString name = SkOSPath::Basename(fPath.c_str());
+        SkDebugf("Attempting to decode %s\n", name.c_str());
         // Decode the full image.
         SkAutoTDelete<SkCodec> codec(SkCodec::NewFromData(encoded));
         if (!codec) {
