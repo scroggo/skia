@@ -461,7 +461,7 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
 
         // Now swizzle it.
         uint8_t* row = base;
-        for (int y = 0; y < numberPasses; y++) {
+        for (int y = 0; y < height; y++) {
             reallyHasAlpha |= swizzler->next(row);
             row += rowBytes;
         }
