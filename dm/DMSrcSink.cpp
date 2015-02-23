@@ -65,6 +65,7 @@ Error ImageSrc::draw(SkCanvas* canvas) const {
                 info = info.makeAlphaType(kPremul_SkAlphaType);
             }
             bitmap.allocPixels(info);
+            SkAutoLockPixels alp(bitmap);
             if (codec->getPixels(info, bitmap.getPixels(), bitmap.rowBytes()) != SkImageGenerator::kSuccess) {
                 return SkStringPrintf("Couldn't getPixels %s.", fPath.c_str());
             }
