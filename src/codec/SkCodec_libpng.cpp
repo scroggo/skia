@@ -388,10 +388,6 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
         return kInvalidInput;
     }
 
-    // FIXME: Here is where we should likely insert some of the modifications
-    // made in the factory.
-    png_read_update_info(fPng_ptr, fInfo_ptr);
-
     // FIXME: We already retrieved this information. Store it in SkPngCodec?
     png_uint_32 origWidth, origHeight;
     int bitDepth, pngColorType, interlaceType;
@@ -440,6 +436,10 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
         // FIXME: CreateSwizzler could fail for another reason.
         return kUnimplemented;
     }
+
+    // FIXME: Here is where we should likely insert some of the modifications
+    // made in the factory.
+    png_read_update_info(fPng_ptr, fInfo_ptr);
 
     if (numberPasses > 1) {
         const int width = requestedInfo.width();
