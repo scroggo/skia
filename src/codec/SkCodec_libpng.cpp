@@ -277,11 +277,16 @@ SkCodec* SkPngCodec::NewFromStream(SkStream* stream) {
                     kUnpremul_SkAlphaType : kOpaque_SkAlphaType;
             break;
         case PNG_COLOR_TYPE_GRAY:
-            // FIXME: Is this the wrong default behavior? This means if the
-            // caller supplies the info we gave them, they'll get Alpha 8.
-            skColorType = kAlpha_8_SkColorType;
-            // FIXME: Strangely, the canonical type for Alpha 8 is Premul.
-            skAlphaType = kPremul_SkAlphaType;
+            if (false) {
+                // FIXME: Is this the wrong default behavior? This means if the
+                // caller supplies the info we gave them, they'll get Alpha 8.
+                skColorType = kAlpha_8_SkColorType;
+                // FIXME: Strangely, the canonical type for Alpha 8 is Premul.
+                skAlphaType = kPremul_SkAlphaType;
+            } else {
+                skColorType = kN32_SkColorType;
+                skAlphaType = kOpaque_SkAlphaType;
+            }
             break;
         default:
             // FIXME: This *almost* mimics the code in SkImageDecoder_libpng.
@@ -298,6 +303,23 @@ SkCodec* SkPngCodec::NewFromStream(SkStream* stream) {
             }
             skColorType = kN32_SkColorType;
             break;
+    }
+
+    {
+        // FIXME: Again, this block needs to go into onGetPixels.
+        bool convertGrayToRGB = PNG_COLOR_TYPE_GRAY == colorType && skColorType != kAlpha_8_SkColorType;
+
+        // Unless the user is requesting A8, convert a grayscale image into RGB.
+        // GRAY_ALPHA will always be converted to RGB
+        if (convertGrayToRGB || colorType == PNG_COLOR_TYPE_GRAY_ALPHA) {
+            png_set_gray_to_rgb(png_ptr);
+        }
+
+        // Add filler (or alpha) byte (after each RGB triplet) if necessary.
+        // FIXME: It seems like we could just use RGB as the SrcConfig here.
+        if (colorType == PNG_COLOR_TYPE_RGB || convertGrayToRGB) {
+            png_set_filler(png_ptr, 0xff, PNG_FILLER_AFTER);
+        }
     }
 
     // FIXME: Also need to check for sRGB.
