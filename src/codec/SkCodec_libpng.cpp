@@ -71,6 +71,7 @@ public:
         , fInfo_ptr(NULL) {}
 
     ~AutoCleanPng() {
+        // fInfo_ptr will never be non-NULL unless fPng_ptr is.
         if (fPng_ptr) {
             png_infopp info_pp = fInfo_ptr ? &fInfo_ptr : NULL;
             png_destroy_read_struct(&fPng_ptr, info_pp, png_infopp_NULL);
@@ -96,9 +97,14 @@ private:
 // call only if color_type is PALETTE. Returns true if the ctable has alpha
 static bool has_transparency_in_palette(png_structp png_ptr,
                                         png_infop info_ptr) {
+    if (setjmp(png_jmpbuf(png_ptr))) {
+        return NULL;
+    }
+
     if (!png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)) {
         return false;
     }
+
     png_bytep trans;
     int num_trans;
     png_get_tRNS(png_ptr, info_ptr, &trans, &num_trans, NULL);
@@ -115,6 +121,10 @@ SkColorTable* decode_palette(png_structp png_ptr, png_infop info_ptr,
     int numPalette;
     png_colorp palette;
     png_bytep trans;
+
+    if (setjmp(png_jmpbuf(png_ptr))) {
+        return NULL;
+    }
 
     if (!png_get_PLTE(png_ptr, info_ptr, &palette, &numPalette)) {
         return NULL;
@@ -381,6 +391,11 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
         return kInvalidConversion;
     }
 
+    // Initialize all non-trivial objects before setjmp.
+    SkAutoTUnref<SkColorTable> colorTable;
+    SkAutoTDelete<SkSwizzler> swizzler;
+    SkAutoMalloc storage;                   // Scratch memory for pre-swizzled memory.
+
     // FIXME: Could we use the return value of setjmp to specify the type of
     // error?
     if (setjmp(png_jmpbuf(fPng_ptr))) {
@@ -399,7 +414,6 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
 
     SkSwizzler::SrcConfig sc;
     bool reallyHasAlpha = false;
-    SkAutoTUnref<SkColorTable> colorTable;
     if (PNG_COLOR_TYPE_PALETTE == pngColorType) {
         sc = SkSwizzler::kIndex;
         SkAlphaType at = requestedInfo.alphaType();
@@ -429,9 +443,8 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
     }
     const SkPMColor* colors = colorTable ? colorTable->readColors() : NULL;
     // TODO: Support skipZeroes.
-    SkAutoTDelete<SkSwizzler> swizzler(SkSwizzler::CreateSwizzler(sc, colors,
-                                                                  requestedInfo,
-                                                                  dst, rowBytes, false));
+    swizzler.reset(SkSwizzler::CreateSwizzler(sc, colors, requestedInfo,
+                                              dst, rowBytes, false));
     if (!swizzler) {
         // FIXME: CreateSwizzler could fail for another reason.
         return kUnimplemented;
@@ -447,7 +460,7 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
         const int bpp = SkSwizzler::BytesPerPixel(sc);
         const size_t rowBytes = width * bpp;
 
-        SkAutoMalloc storage(width * height * bpp);
+        storage.reset(width * height * bpp);
         uint8_t* const base = static_cast<uint8_t*>(storage.get());
 
         for (int i = 0; i < numberPasses; i++) {
@@ -466,7 +479,7 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
             row += rowBytes;
         }
     } else {
-        SkAutoMalloc storage(requestedInfo.width() * SkSwizzler::BytesPerPixel(sc));
+        storage.reset(requestedInfo.width() * SkSwizzler::BytesPerPixel(sc));
         uint8_t* srcRow = static_cast<uint8_t*>(storage.get());
         for (int y = 0; y < requestedInfo.height(); y++) {
             png_read_rows(fPng_ptr, &srcRow, png_bytepp_NULL, 1);
