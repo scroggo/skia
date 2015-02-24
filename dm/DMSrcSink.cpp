@@ -46,9 +46,6 @@ Error ImageSrc::draw(SkCanvas* canvas) const {
     }
     const SkColorType dstColorType = canvas->imageInfo().colorType();
     if (fDivisor == 0) {
-        // Just for debugging.
-        SkString name = SkOSPath::Basename(fPath.c_str());
-        SkDebugf("Attempting to decode %s\n", name.c_str());
         // Decode the full image.
         SkBitmap bitmap;
         if (FLAGS_codec) {
@@ -60,13 +57,16 @@ Error ImageSrc::draw(SkCanvas* canvas) const {
             if (!codec->getInfo(&info)) {
                 return SkStringPrintf("Couldn't getInfo %s.", fPath.c_str());
             }
+            info = info.makeColorType(dstColorType);
             if (info.alphaType() == kUnpremul_SkAlphaType) {
                 // FIXME: Currently we cannot draw unpremultiplied sources.
                 info = info.makeAlphaType(kPremul_SkAlphaType);
             }
             bitmap.allocPixels(info);
             SkAutoLockPixels alp(bitmap);
-            if (codec->getPixels(info, bitmap.getPixels(), bitmap.rowBytes()) != SkImageGenerator::kSuccess) {
+            const SkImageGenerator::Result result = codec->getPixels(info, bitmap.getPixels(),
+                                                                     bitmap.rowBytes());
+            if (result != SkImageGenerator::kSuccess) {
                 return SkStringPrintf("Couldn't getPixels %s.", fPath.c_str());
             }
         } else {

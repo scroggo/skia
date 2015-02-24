@@ -97,10 +97,6 @@ private:
 // call only if color_type is PALETTE. Returns true if the ctable has alpha
 static bool has_transparency_in_palette(png_structp png_ptr,
                                         png_infop info_ptr) {
-    if (setjmp(png_jmpbuf(png_ptr))) {
-        return NULL;
-    }
-
     if (!png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)) {
         return false;
     }
@@ -121,10 +117,6 @@ SkColorTable* decode_palette(png_structp png_ptr, png_infop info_ptr,
     int numPalette;
     png_colorp palette;
     png_bytep trans;
-
-    if (setjmp(png_jmpbuf(png_ptr))) {
-        return NULL;
-    }
 
     if (!png_get_PLTE(png_ptr, info_ptr, &palette, &numPalette)) {
         return NULL;
@@ -394,7 +386,7 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
     // Initialize all non-trivial objects before setjmp.
     SkAutoTUnref<SkColorTable> colorTable;
     SkAutoTDelete<SkSwizzler> swizzler;
-    SkAutoMalloc storage;                   // Scratch memory for pre-swizzled memory.
+    SkAutoMalloc storage;                   // Scratch memory for pre-swizzled rows.
 
     // FIXME: Could we use the return value of setjmp to specify the type of
     // error?
@@ -494,7 +486,8 @@ SkCodec::Result SkPngCodec::onGetPixels(const SkImageInfo& requestedInfo, void* 
 
     if (reallyHasAlpha && requestedInfo.alphaType() != kOpaque_SkAlphaType) {
         // FIXME: We want to alert the caller. Is this the right way?
-        *const_cast<SkImageInfo*>(&requestedInfo) = requestedInfo.makeAlphaType(kOpaque_SkAlphaType);
+        SkImageInfo* modInfo = const_cast<SkImageInfo*>(&requestedInfo);
+        *modInfo = requestedInfo.makeAlphaType(kOpaque_SkAlphaType);
     }
     return kSuccess;
 }
